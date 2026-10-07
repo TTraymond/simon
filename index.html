@@ -1,0 +1,317 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Simon l'Apéro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* Layout: plateau carré de quatre verres sur le zinc, le héros au-dessus, consignes dessous */
+[hidden]{display:none!important}
+:root{
+  --night:#0d0b0a; --panel:#1a1614; --zinc:#9aa4b0; --pastis:#ffd23f; --orange:#f27a1a; --pink:#ff4fa3; --ink:#f1ebe4; --muted:#9d948b;
+  --display:"Press Start 2P", ui-monospace, "Courier New", monospace;
+  --text:"VT323", ui-monospace, "Courier New", monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:radial-gradient(ellipse 80% 60% at 50% 0%, #2c2410 0%, var(--night) 70%); background-color:var(--night); color:var(--ink);
+  font-family:var(--text); font-size:20px; overflow:hidden; -webkit-user-select:none; user-select:none; touch-action:pan-x pan-y}
+#app{height:100%; box-sizing:border-box; padding-block:10px; padding-inline:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px}
+#bar{display:flex; align-items:center; justify-content:space-between; gap:8px; width:min(100%, 440px)}
+#bar .brand{font-family:var(--display); font-size:10px; color:var(--pastis); text-shadow:0 0 8px rgba(255,210,63,.6); white-space:nowrap}
+.tbtn{font-family:var(--display); font-size:9px; color:var(--ink); background:var(--panel); border:2px solid #3a302a; border-radius:4px; padding:7px 9px; cursor:pointer}
+.tbtn[aria-pressed="true"]{color:var(--muted)}
+.top{display:flex; align-items:center; gap:14px; width:min(100%, 440px)}
+#hero{width:60px; height:70px; image-rendering:pixelated; flex:none}
+.bubble{flex:1; min-width:0; background:#f4ecd8; color:#2a201a; border-radius:4px; padding:8px 12px; font-size:21px; line-height:1.05; box-shadow:0 3px 0 #b9a888; position:relative}
+.bubble::before{content:""; position:absolute; left:-8px; top:22px; border:8px solid transparent; border-right-color:#f4ecd8; border-left:0}
+.score{display:flex; gap:18px; font-family:var(--display); font-size:9px; color:var(--muted); width:min(100%, 440px); justify-content:space-between}
+.score strong{color:var(--ink); font-weight:400; margin-left:6px; font-variant-numeric:tabular-nums}
+#board{--s:min(86vw, calc(100vh - 330px), 420px); width:var(--s); height:var(--s); display:grid; grid-template-columns:1fr 1fr; gap:12px;
+  padding:14px; box-sizing:border-box; background:linear-gradient(#a9b2bd, #7f8995); border-radius:10px; box-shadow:0 6px 0 #4e5660, 0 0 40px rgba(255,210,63,.15); position:relative}
+.glass{position:relative; border:0; border-radius:8px; background:#2a2420; cursor:pointer; padding:0; overflow:hidden; box-shadow:inset 0 -6px 0 rgba(0,0,0,.35)}
+.glass canvas{width:100%; height:100%; image-rendering:pixelated; display:block}
+.glass .key{position:absolute; right:6px; bottom:6px; font-family:var(--display); font-size:8px; color:rgba(241,235,228,.55)}
+.glass .lbl{position:absolute; left:8px; top:6px; font-size:17px; color:rgba(241,235,228,.7)}
+.glass[data-i="2"] .lbl,.glass[data-i="3"] .lbl{top:auto; bottom:4px}
+.glass.lit{box-shadow:0 0 30px 6px var(--c), inset 0 0 0 3px #fff}
+.glass:focus-visible,#start:focus-visible{outline:3px solid var(--pink); outline-offset:2px}
+#center{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:74px; height:74px; border-radius:50%; background:#1a1614; border:4px solid #c3cbd4;
+  display:flex; align-items:center; justify-content:center; flex-direction:column; font-family:var(--display); color:var(--pastis); pointer-events:none}
+#center b{font-size:18px; font-weight:400} #center span{font-size:6px; color:var(--muted); margin-top:4px}
+#start{font-family:var(--display); font-size:12px; text-transform:uppercase; color:#1a1200; background:var(--pastis); border:0; border-radius:4px; padding:12px 20px; cursor:pointer; box-shadow:0 4px 0 #b88a00}
+#start:active{transform:translateY(3px); box-shadow:0 1px 0 #b88a00}
+.hint{margin:0; font-size:17px; color:var(--muted); text-align:center}
+
+/* ===== confort mobile : pas de zoom, menus plein écran et lisibles ===== */
+*{-webkit-touch-callout:none; -webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
+body{overscroll-behavior:none}
+#game{touch-action:none}
+button,label,input,select{touch-action:manipulation}
+#overlay{position:fixed !important; inset:0; z-index:10; background-color:rgba(10,8,7,.95) !important;
+  padding:16px max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)) !important}
+#overlay > .card{margin:auto}
+#bar{min-width:0}
+#bar .brand{min-width:0; overflow:hidden; text-overflow:ellipsis}
+#bar .tools,#bar .row{flex:none}
+@media (pointer:coarse){
+  #overlay .eyebrow{font-size:9px}
+  #overlay .rules b,#overlay .legend b,#overlay .keys dt,.palm h2,.menu .menu-title{font-size:9px}
+  #overlay .rules,#overlay .legend li,#overlay .keys{font-size:19px}
+  #overlay .stats{font-size:9px}
+  #overlay .hint{font-size:18px}
+  #overlay #sub{font-size:21px}
+  .tbtn{padding:9px 9px}
+}
+
+/* ===== Simon : plateau au plus grand, portrait comme paysage ===== */
+#board{--s:min(88vw, calc(100vh - 250px), 440px); --s:min(88vw, calc(100dvh - 250px), 440px)}
+#center span{font-size:7px}
+@media (pointer:coarse){
+  .hint{display:none}
+  .glass .key{display:none}
+  .glass .lbl{font-size:19px}
+  #board{--s:min(90vw, calc(100vh - 215px), 460px); --s:min(90vw, calc(100dvh - 215px), 460px)}
+  .tbtn{padding:9px 10px}
+}
+@media (orientation:landscape) and (max-height:600px){
+  #app{display:grid; grid-template-columns:minmax(0, 300px) auto; grid-template-rows:1fr auto auto auto auto auto 1fr;
+    grid-template-areas:". board" "bar board" "top board" "score board" "start board" "hint board" ". board";
+    justify-content:center; align-items:center; gap:10px 22px; padding-block:8px;
+    padding-inline:max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right))}
+  #bar{grid-area:bar; width:100%} .top{grid-area:top; width:100%} .score{grid-area:score; width:100%}
+  #start{grid-area:start; justify-self:center} .hint{grid-area:hint}
+  #board{grid-area:board; --s:min(calc(100vh - 20px), 50vw, 440px); --s:min(calc(100dvh - 20px), 50vw, 440px)}
+  .top{gap:10px} .top #hero{width:50px; height:58px} .bubble{font-size:19px; padding:7px 10px}
+}
+</style>
+
+<div id="app">
+  <div id="bar">
+    <span class="brand">SIMON L'APÉRO</span>
+    <button class="tbtn" id="mute" type="button" aria-pressed="false">♪ SON</button>
+  </div>
+  <div class="top">
+    <canvas id="hero" width="24" height="28" aria-hidden="true"></canvas>
+    <div class="bubble" id="say">Je te sers une tournée de verres. Regarde bien l'ordre, puis rejoue-la exactement pareil !</div>
+  </div>
+  <div class="score"><span>TOURNÉE<strong id="round">0</strong></span><span>RECORD<strong id="best">0</strong></span></div>
+  <div id="board">
+    <button class="glass" data-i="0" type="button" aria-label="Pastis classique"><canvas width="32" height="32"></canvas><span class="lbl">Classique</span><span class="key">↑ 1</span></button>
+    <button class="glass" data-i="1" type="button" aria-label="Tomate"><canvas width="32" height="32"></canvas><span class="lbl">Tomate</span><span class="key">→ 2</span></button>
+    <button class="glass" data-i="2" type="button" aria-label="Mauresque"><canvas width="32" height="32"></canvas><span class="lbl">Mauresque</span><span class="key">← 3</span></button>
+    <button class="glass" data-i="3" type="button" aria-label="Perroquet"><canvas width="32" height="32"></canvas><span class="lbl">Perroquet</span><span class="key">↓ 4</span></button>
+    <div id="center"><b id="count">0</b><span>VERRES</span></div>
+  </div>
+  <button id="start" type="button">Servir la tournée</button>
+  <p class="hint">Clique ou touche les verres · flèches ou 1 2 3 4 au clavier</p>
+</div>
+
+<script>
+/* ===== kit mobile commun : anti-zoom, mise à l'échelle, commandes par pouce ===== */
+(function () {
+  var vp = document.querySelector('meta[name=viewport]');
+  if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; document.head.appendChild(vp); }
+  vp.content = 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';
+  var stop = function (e) { e.preventDefault(); };
+  ['gesturestart', 'gesturechange', 'gestureend', 'dblclick'].forEach(function (t) { document.addEventListener(t, stop, {passive:false}); });
+  document.addEventListener('touchmove', function (e) { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, {passive:false});
+  var lastEnd = 0;
+  document.addEventListener('touchend', function (e) {
+    var now = Date.now(), t = e.target;
+    var interactive = t && t.closest && t.closest('button,input,label,select,textarea,a');
+    if (!interactive && now - lastEnd < 350) e.preventDefault();
+    lastEnd = now;
+  }, {passive:false});
+  document.addEventListener('contextmenu', function (e) { if (!(e.target.closest && e.target.closest('#overlay,input,textarea'))) e.preventDefault(); });
+  var go = document.getElementById('mk-rot-go');
+  if (go) go.addEventListener('click', function () { document.documentElement.classList.add('mk-forced'); window.dispatchEvent(new Event('resize')); });
+
+  // regroupe les boutons tactiles : un bloc à gauche, un bloc à droite
+  window.mkPads = function (contId, L, R, flat) {
+    var c = document.getElementById(contId); if (!c) return;
+    var l = document.createElement('div'), r = document.createElement('div');
+    l.className = 'mkL' + (flat ? ' flat' : ''); r.className = 'mkR';
+    L.forEach(function (id) { var b = document.getElementById(id); if (b) l.appendChild(b); });
+    R.forEach(function (id) { var b = document.getElementById(id); if (b) r.appendChild(b); });
+    c.appendChild(l); if (R.length) c.appendChild(r); else c.classList.add('noR');
+    c.classList.add('mk');
+  };
+
+  // le jeu prend toute la place disponible, en portrait comme en paysage
+  window.mkFit = function (canvas, W, H) {
+    var app = document.getElementById('app'), stage = document.getElementById('stage'), bar = document.getElementById('bar');
+    var vw = document.documentElement.clientWidth;
+    var vh = window.visualViewport ? Math.min(window.visualViewport.height, window.innerHeight) : window.innerHeight;
+    var cs = getComputedStyle(app);
+    var px = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight), py = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var gr = parseFloat(cs.rowGap) || 0, gc = parseFloat(cs.columnGap) || 0;
+    var border = 6, aw, ah;
+    var side = cs.display === 'grid' && app.querySelector('.mkL');
+    if (side) {
+      var L = app.querySelector('.mkL'), R = app.querySelector('.mkR');
+      aw = vw - px - (L ? L.offsetWidth : 0) - (R ? R.offsetWidth : 0) - 2 * gc - border;
+      ah = vh - py - bar.offsetHeight - gr - border;
+      bar.style.width = '';
+    } else {
+      var other = 0, n = 0;
+      Array.prototype.forEach.call(app.children, function (el) {
+        if (el === stage || el.hidden) return;
+        var d = getComputedStyle(el); if (d.display === 'none' || d.position === 'fixed' || d.position === 'absolute') return;
+        other += el.offsetHeight; n++;
+      });
+      aw = vw - px - border; ah = vh - py - other - n * gr - border;
+    }
+    var s = Math.min(aw / W, ah / H);
+    if (s > 1) s = Math.floor(s * 4) / 4;
+    s = Math.max(0.3, s);
+    canvas.style.width = Math.floor(W * s) + 'px'; canvas.style.height = Math.floor(H * s) + 'px';
+    if (!side) bar.style.width = (Math.floor(W * s) + border) + 'px';
+  };
+})();
+</script>
+<script>
+(() => {
+'use strict';
+/* ---------- le héros (d'après la photo) ---------- */
+const HERO = [
+"........KKKKKKKK........","......hKKqKKKKqKKh......",".....hhKqKKKqKKqKhh.....","....hhKKKKKKKKKKKKhh....",
+"...hhKKKKKKKKKKKKKKhh...","...hgKKKKKKKKKKKKKKgh...","...hKKKKKKKKKKKKKKKKh...","...hKbbbbKKKKKKbbbbKh...",
+"..FFFFFFFFFFFFFFFFFFFF..",".kFllllllllFFllllllllFk.",".kFllllllllFFllllllllFk.",".kFllllllllFFllllllllFk.",
+"..FFFFFFFFFKKFFFFFFFFF..","...KKKKKKKKkkKKKKKKKK...","...KrrKKKKkkkkKKKKrrK...","...BKKKbbbbbbbbbbKKKB...",
+"...BBbBbBBBBBBBBbBbBB...","...BbBBbBBbbbbBBbBBbB...","....BbBbBBbBBbBBbBbB....",".....BBbBbBBbbBbBbB.....",
+".......BbBBbbBBbB.......",".........kkkkkk.........","......TTTkkkkkkTTT......","...TTTTTTTkkkkTTTTTTT...",
+".TTTTTTTTTTTTTTTTTTTTTT.","TTTTTTTTTTTTTTTTTTTTTTTT","TTTtTTTTTTTTTTTTTTTTtTTT","TTTtTTTTTTTTTTTTTTTTtTTT"];
+const HCOL = {K:'#e7b292', k:'#c98d6e', r:'#de8f7c', q:'#c4a18b', h:'#4a433d', g:'#6f6861', b:'#3e3833', B:'#7c766f',
+  F:'#2c2e33', l:'#dcc3b3', e:'#2a2420', w:'#ffffff', m:'#7a3a34', W:'#fbf6ee', T:'#f27a1a', t:'#c95e0d'};
+const heroCv = document.getElementById('hero'), hg = heroCv.getContext('2d');
+function drawHero(mood, lx = 0, ly = 0) {
+  const R = HERO.map(r => r.split('')); const set = (c, r, ch) => { R[r][c] = ch; };
+  const ey = ly > 0 ? 11 : 10;
+  set(5 + lx, ey, 'e'); set(6 + lx, ey, 'e'); set(15 + lx, ey, 'e'); set(16 + lx, ey, 'e'); set(3, 9, 'w'); set(13, 9, 'w');
+  if (mood === 'grin') { for (let c = 8; c <= 15; c++) set(c, 16, 'W'); for (let c = 9; c <= 14; c++) set(c, 17, 'm'); }
+  else if (mood === 'o') { set(11, 16, 'm'); set(12, 16, 'm'); set(11, 17, 'm'); set(12, 17, 'm'); }
+  else if (mood === 'meh') { for (let c = 9; c <= 14; c++) set(c, 16, 'm'); set(8, 17, 'm'); set(15, 17, 'm'); }
+  else { for (let c = 9; c <= 14; c++) set(c, 16, 'm'); set(8, 15, 'm'); set(15, 15, 'm'); }
+  if (mood === 'o' || mood === 'grin') for (const c of [5, 6, 7, 8, 15, 16, 17, 18]) { set(c, 7, 'K'); set(c, 6, 'b'); }
+  if (mood === 'meh') { set(5, 7, 'K'); set(18, 7, 'K'); set(5, 8, 'F'); set(18, 8, 'F'); }
+  hg.clearRect(0, 0, 24, 28);
+  R.forEach((row, r) => row.forEach((ch, c) => { if (ch !== '.') { hg.fillStyle = HCOL[ch]; hg.fillRect(c, r, 1, 1); } }));
+}
+
+/* ---------- les quatre verres ---------- */
+const GLASSES = [
+  {name:'classique', liquid:'#f2c23a', lit:'#ffe27a', note:392},
+  {name:'tomate',    liquid:'#d8233b', lit:'#ff6b80', note:523.25},
+  {name:'mauresque', liquid:'#efe3c8', lit:'#ffffff', note:659.25},
+  {name:'perroquet', liquid:'#2fae4e', lit:'#7dff9a', note:783.99}
+];
+const btns = [...document.querySelectorAll('.glass')];
+function paintGlass(i, on) {
+  const cv = btns[i].querySelector('canvas'), g = cv.getContext('2d'), G = GLASSES[i];
+  btns[i].style.setProperty('--c', G.lit);
+  g.clearRect(0, 0, 32, 32);
+  g.fillStyle = on ? '#3a3020' : '#211c19'; g.fillRect(0, 0, 32, 32);
+  if (on) { const rg = g.createRadialGradient(16, 18, 2, 16, 18, 18); rg.addColorStop(0, G.lit + 'aa'); rg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(0, 0, 32, 32); }
+  const X = 10, Y = 7, liq = on ? G.lit : G.liquid;
+  g.fillStyle = '#e8453c'; g.fillRect(X + 8, Y - 4, 1, 9); g.fillRect(X + 9, Y - 5, 3, 1);
+  g.fillStyle = liq; g.fillRect(X + 1, Y + 5, 10, 13);
+  g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(X + 1, Y + 5, 10, 1);
+  g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(X + 3, Y + 7, 3, 3); g.fillRect(X + 6, Y + 11, 3, 3);
+  g.fillStyle = on ? '#ffffff' : '#d7ecf7'; g.fillRect(X, Y, 1, 19); g.fillRect(X + 11, Y, 1, 19); g.fillRect(X, Y + 18, 12, 1);
+  g.fillStyle = 'rgba(255,255,255,.4)'; g.fillRect(X + 2, Y + 2, 1, 14);
+}
+
+/* ---------- son ---------- */
+let actx = null, master = null, muted = false;
+try { muted = localStorage.getItem('pastisman-muted') === '1'; } catch (e) {}
+function initAudio() {
+  if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); master = actx.createGain(); master.gain.value = muted ? 0 : 0.5; master.connect(actx.destination); }
+  if (actx.state === 'suspended') actx.resume();
+}
+function tone(f, dur, type = 'square', vol = 0.1, delay = 0, slideTo) {
+  if (!actx || muted) return;
+  const t0 = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01); g.gain.setValueAtTime(vol, t0 + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + 0.03);
+}
+function glassSound(i, dur) {
+  const f = GLASSES[i].note;
+  tone(f, dur, 'square', 0.06); tone(f / 2, dur, 'triangle', 0.14);
+  tone(f * 4, 0.08, 'sine', 0.08);   // tintement du verre
+}
+const arp = (notes, gap, type = 'square', vol = 0.07) => notes.forEach((n, i) => tone(n, gap * 1.6, type, vol, i * gap));
+
+/* ---------- jeu ---------- */
+let seq = [], pos = 0, state = 'idle', best = 0;
+try { best = parseInt(localStorage.getItem('simon-best') || '0', 10) || 0; } catch (e) {}
+const $ = id => document.getElementById(id);
+const say = t => { $('say').textContent = t; };
+const CHEERS = ['Santé !', 'Bien joué, la tournée est servie !', 'Tu as l\'œil du barman.', 'Parfait, on remet ça ?', 'Pas une goutte de travers !'];
+function sync() { $('round').textContent = seq.length; $('best').textContent = best; $('count').textContent = state === 'input' ? seq.length - pos : seq.length; }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function flash(i, ms) {
+  btns[i].classList.add('lit'); paintGlass(i, true); glassSound(i, ms / 1000);
+  drawHero('o', i === 1 || i === 3 ? 1 : -1, i >= 2 ? 1 : 0);
+  await sleep(ms);
+  btns[i].classList.remove('lit'); paintGlass(i, false); drawHero('smile');
+}
+async function playSeq() {
+  state = 'show'; sync();
+  say(seq.length === 1 ? 'Regarde bien : un verre pour commencer.' : 'Tournée ' + seq.length + ' : regarde bien l\'ordre…');
+  await sleep(700);
+  const speed = seq.length < 5 ? 520 : seq.length < 9 ? 420 : seq.length < 13 ? 330 : 260;
+  for (const i of seq) { if (state !== 'show') return; await flash(i, speed); await sleep(speed * 0.35); }
+  state = 'input'; pos = 0; sync();
+  say('À toi ! Rejoue les ' + seq.length + ' verre' + (seq.length > 1 ? 's' : '') + '.');
+}
+function next() { seq.push(Math.floor(Math.random() * 4)); playSeq(); }
+async function press(i) {
+  if (state !== 'input') return;
+  initAudio();
+  if (i !== seq[pos]) {
+    state = 'over';
+    tone(150, 0.6, 'square', 0.1); tone(110, 0.6, 'sawtooth', 0.06, 0.05);
+    drawHero('meh');
+    if (seq.length - 1 > best) { best = seq.length - 1; try { localStorage.setItem('simon-best', String(best)); } catch (e) {} }
+    say('Raté ! Il fallait le verre ' + GLASSES[seq[pos]].name + '. Score : ' + (seq.length - 1) + ' tournée' + (seq.length - 1 > 1 ? 's' : '') + '.');
+    btns[seq[pos]].classList.add('lit'); paintGlass(seq[pos], true);
+    await sleep(1200); btns[seq[pos]].classList.remove('lit'); paintGlass(seq[pos], false);
+    $('start').textContent = 'Resservir'; $('start').hidden = false; sync();
+    return;
+  }
+  pos++; sync();
+  await flash(i, 220);
+  if (pos === seq.length) {
+    state = 'wait';
+    if (seq.length > best) { best = seq.length; try { localStorage.setItem('simon-best', String(best)); } catch (e) {} }
+    drawHero('grin'); say(CHEERS[Math.floor(Math.random() * CHEERS.length)]);
+    if (seq.length % 5 === 0) arp([523, 659, 784, 1047, 1319], 0.08); else arp([784, 1047], 0.08, 'triangle', 0.12);
+    sync();
+    await sleep(1100); drawHero('smile'); next();
+  }
+}
+function start() { initAudio(); seq = []; $('start').hidden = true; drawHero('grin'); arp([392, 523, 659, 784], 0.1, 'square', 0.06); setTimeout(next, 600); }
+
+btns.forEach((b, i) => b.addEventListener('pointerdown', e => { e.preventDefault(); press(i); }));
+$('start').addEventListener('click', start);
+$('mute').addEventListener('click', () => {
+  initAudio(); muted = !muted; if (master) master.gain.value = muted ? 0 : 0.5;
+  try { localStorage.setItem('pastisman-muted', muted ? '1' : '0'); } catch (e) {}
+  syncMute();
+});
+function syncMute() { $('mute').textContent = muted ? '♪ MUET' : '♪ SON'; $('mute').setAttribute('aria-pressed', String(muted)); }
+const KEYS = {ArrowUp:0, Digit1:0, Numpad1:0, ArrowRight:1, Digit2:1, Numpad2:1, ArrowLeft:2, Digit3:2, Numpad3:2, ArrowDown:3, Digit4:3, Numpad4:3};
+window.addEventListener('keydown', e => {
+  if (e.code in KEYS) { e.preventDefault(); if (!e.repeat) press(KEYS[e.code]); return; }
+  if ((e.code === 'Space' || e.code === 'Enter') && !$('start').hidden) { e.preventDefault(); start(); }
+  if (e.key.toLowerCase() === 'm') $('mute').click();
+});
+
+GLASSES.forEach((_, i) => paintGlass(i, false));
+drawHero('smile'); syncMute(); sync();
+})();
+</script>
+
+</body></html>
